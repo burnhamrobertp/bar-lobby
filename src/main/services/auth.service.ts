@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-import { clearAuthSession } from "@main/oauth2/auth-window";
+import { authView, clearAuthSession, LoginCancelledError } from "@main/oauth2/auth-view";
 import { authenticate, renewAccessToken, startTokenRenewer, stopTokenRenewer } from "@main/oauth2/oauth2";
 import { accountService } from "@main/services/account.service";
 import { logger } from "@main/utils/logger";
@@ -18,11 +18,22 @@ function registerIpcHandlers() {
             await accountService.saveToken(token);
             await accountService.saveRefreshToken(refreshToken);
             startTokenRenewer((expiresIn / 2) * 1000);
+            return "ok";
         } catch (error) {
+            if (error instanceof LoginCancelledError) {
+                log.info("Login cancelled by user");
+                return "cancelled";
+            }
             log.error("Error during login");
             accountService.wipe();
             throw error;
         }
+    });
+    ipcMain.handle("auth:cancelLogin", () => {
+        authView.cancel();
+    });
+    ipcMain.handle("auth:setLoginViewBounds", (_event, bounds) => {
+        authView.setBounds(bounds);
     });
     ipcMain.handle("auth:logout", async () => {
         stopTokenRenewer();

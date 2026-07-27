@@ -28,10 +28,19 @@ SPDX-License-Identifier: MIT
             </div>
         </Transition>
     </div>
+    <div v-if="loginViewOpen" class="login-overlay">
+        <div class="login-panel">
+            <div class="login-panel-header">
+                <span>{{ t("lobby.views.index.login") }}</span>
+                <button class="login-panel-close" @click="cancelLogin">&times;</button>
+            </div>
+            <div ref="loginViewSlot" class="login-view-slot"></div>
+        </div>
+    </div>
 </template>
 
 <script lang="ts" setup>
-import { onActivated, ref } from "vue";
+import { nextTick, onBeforeUnmount, onActivated, ref, useTemplateRef } from "vue";
 import { useTypedI18n } from "@renderer/i18n";
 
 import Loader from "@renderer/components/common/Loader.vue";
@@ -46,6 +55,42 @@ const router = useRouter();
 
 const connecting = ref(false);
 const error = ref<string>();
+
+const loginViewOpen = ref(false);
+const loginViewSlot = useTemplateRef<HTMLElement>("loginViewSlot");
+let slotObserver: ResizeObserver | undefined;
+
+function reportLoginViewBounds() {
+    if (!loginViewSlot.value) return;
+
+    const { x, y, width, height } = loginViewSlot.value.getBoundingClientRect();
+    window.auth.setLoginViewBounds({ x, y, width, height });
+}
+
+window.auth.onLoginViewOpened(async () => {
+    loginViewOpen.value = true;
+    await nextTick();
+    if (!loginViewSlot.value) return;
+
+    reportLoginViewBounds();
+    slotObserver = new ResizeObserver(reportLoginViewBounds);
+    slotObserver.observe(loginViewSlot.value);
+    window.addEventListener("resize", reportLoginViewBounds);
+});
+
+function teardownLoginView() {
+    loginViewOpen.value = false;
+    slotObserver?.disconnect();
+    slotObserver = undefined;
+    window.removeEventListener("resize", reportLoginViewBounds);
+}
+
+window.auth.onLoginViewClosed(teardownLoginView);
+onBeforeUnmount(teardownLoginView);
+
+function cancelLogin() {
+    window.auth.cancelLogin();
+}
 
 const hasCredentials = ref(false);
 onActivated(async () => {
@@ -63,7 +108,8 @@ async function login() {
     try {
         error.value = "";
         connecting.value = true;
-        await auth.login();
+        if ((await auth.login()) === "cancelled") return;
+
         await tachyon.connect();
         const redirect = router.currentRoute.value.query.redirect as string | undefined;
         router.push(redirect || "/play");
@@ -115,9 +161,58 @@ if (hasCredentials.value && settingsStore.loginAutomatically) {
     margin-right: auto;
 }
 
+.login-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+}
+
 .logo {
     filter: drop-shadow(3px 3px 5px rgba(0, 0, 0, 0.8));
     margin-bottom: 80px;
+}
+
+.login-panel {
+    display: flex;
+    flex-direction: column;
+    width: 720px;
+    height: 800px;
+    max-width: 92vw;
+    max-height: 90vh;
+    background: rgba(0, 0, 0, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+
+.login-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 8px 8px 16px;
+    font-family: Rajdhani;
+    font-weight: bold;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.login-panel-close {
+    padding: 0 12px;
+    font-size: 1.8rem;
+    line-height: 1;
+    color: #fff;
+    opacity: 0.5;
+    &:hover {
+        opacity: 1;
+    }
+}
+
+.login-view-slot {
+    flex: 1;
 }
 
 .play-offline {

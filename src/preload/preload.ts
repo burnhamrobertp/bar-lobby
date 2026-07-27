@@ -78,10 +78,16 @@ export type SettingsApi = typeof settingsApi;
 contextBridge.exposeInMainWorld("settings", settingsApi);
 
 const authApi = {
-    login: (): Promise<void> => ipcRenderer.invoke("auth:login"),
+    login: (): Promise<"ok" | "cancelled"> => ipcRenderer.invoke("auth:login"),
     logout: (): Promise<void> => ipcRenderer.invoke("auth:logout"),
     wipe: (): Promise<void> => ipcRenderer.invoke("auth:wipe"),
     hasCredentials: (): Promise<boolean> => ipcRenderer.invoke("auth:hasCredentials"),
+    cancelLogin: (): Promise<void> => ipcRenderer.invoke("auth:cancelLogin"),
+    setLoginViewBounds: (bounds: { x: number; y: number; width: number; height: number }): Promise<void> => ipcRenderer.invoke("auth:setLoginViewBounds", bounds),
+
+    // Events
+    onLoginViewOpened: (callback: () => void) => ipcRenderer.on("auth:loginViewOpened", callback),
+    onLoginViewClosed: (callback: () => void) => ipcRenderer.on("auth:loginViewClosed", callback),
 };
 export type AuthApi = typeof authApi;
 contextBridge.exposeInMainWorld("auth", authApi);

@@ -19,6 +19,8 @@ import type { TachyonEvent, TachyonResponse } from "tachyon-protocol";
 import { ipcRenderer as electronIpcRenderer, ipcMain as electronIpcMain } from "electron";
 
 export type IPCEvents = {
+    "auth:loginViewOpened": () => void;
+    "auth:loginViewClosed": () => void;
     "downloads:update:progress": (downloadInfo: DownloadInfo) => void;
     "downloads:engine:complete": (downloadInfo: DownloadInfo) => void;
     "downloads:engine:fail": (downloadInfo: DownloadInfo) => void;
@@ -53,7 +55,9 @@ export type IPCEvents = {
 
 export type IPCCommands = {
     "auth:hasCredentials": () => boolean;
-    "auth:login": () => void;
+    "auth:login": () => "ok" | "cancelled";
+    "auth:cancelLogin": () => void;
+    "auth:setLoginViewBounds": (bounds: { x: number; y: number; width: number; height: number }) => void;
     "auth:logout": () => void;
     "auth:wipe": () => void;
     "autoUpdater:checkForUpdates": () => boolean;

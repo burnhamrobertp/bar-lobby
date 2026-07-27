@@ -46,8 +46,10 @@ async function unsubscribeFromUsers(userIds: string[]) {
 
 async function login() {
     try {
-        await window.auth.login();
-        me.isAuthenticated = true;
+        const result = await window.auth.login();
+        me.isAuthenticated = result === "ok";
+
+        return result;
     } catch (e) {
         console.error(e);
         me.isAuthenticated = false;
