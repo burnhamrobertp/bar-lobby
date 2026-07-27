@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: MIT
 
 import { OAUTH_CLIENT_ID, OAUTH_SCOPE, getOAuthAuthorizationServerURL, getOAuthWellKnownURL } from "@main/config/server";
+import AuthWindow from "@main/oauth2/auth-window";
 import { generatePKCE } from "@main/oauth2/pkce";
 import RedirectHandler from "@main/oauth2/redirect-handler";
 import { accountService } from "@main/services/account.service";
 import { logger } from "@main/utils/logger";
-import { shell } from "electron";
 import { stringify } from "node:querystring";
 
 const log = logger("oauth2-utils");
@@ -49,14 +49,6 @@ export async function fetchAuthorizationServerMetadata(): Promise<{
     };
 }
 
-// Careful with shell.openExternal. https://benjamin-altpeter.de/shell-openexternal-dangers/
-function openInBrowser(url: string) {
-    if (!["https:", "http:"].includes(new URL(url).protocol)) return;
-    // Additional checks to prevent opening arbitrary URLs
-    if (!url.startsWith(getOAuthAuthorizationServerURL())) return;
-    shell.openExternal(url);
-}
-
 function createUrlWithQuerystring(baseUrl: string, params: Record<string, string | number | boolean>): string {
     const queryString = stringify(params);
     return `${baseUrl}?${queryString}`;
@@ -66,6 +58,7 @@ export async function authenticate(): Promise<TokenResponse> {
     const { authorizationEndpoint, tokenEndpoint } = await fetchAuthorizationServerMetadata();
     const [code_verifier, code_challenge] = generatePKCE();
     const redirectHandler = new RedirectHandler();
+    const authWindow = new AuthWindow();
     try {
         const redirect_uri = await redirectHandler.start();
         // TODO set state parameter to prevent CSRF attacks
@@ -78,8 +71,9 @@ export async function authenticate(): Promise<TokenResponse> {
             code_challenge,
             code_challenge_method: "S256",
         });
-        openInBrowser(url);
-        const callbackUrl = await redirectHandler.waitForCallback();
+        authWindow.open(url);
+        const callbackUrl = await Promise.race([redirectHandler.waitForCallback(), authWindow.dismissal()]);
+        authWindow.close();
         log.debug(`Received callback URL: ${callbackUrl}`);
         const code = callbackUrl.searchParams.get("code");
 
@@ -120,6 +114,7 @@ export async function authenticate(): Promise<TokenResponse> {
         log.error("Error during login");
         throw error;
     } finally {
+        authWindow.close();
         redirectHandler.close();
     }
 }

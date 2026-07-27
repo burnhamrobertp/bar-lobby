@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
+import { clearAuthSession } from "@main/oauth2/auth-window";
 import { authenticate, renewAccessToken, startTokenRenewer, stopTokenRenewer } from "@main/oauth2/oauth2";
 import { accountService } from "@main/services/account.service";
 import { logger } from "@main/utils/logger";
@@ -30,6 +31,7 @@ function registerIpcHandlers() {
     ipcMain.handle("auth:wipe", async () => {
         stopTokenRenewer();
         await accountService.wipe();
+        await clearAuthSession();
     });
     ipcMain.handle("auth:hasCredentials", async () => {
         const refreshToken = await accountService.getRefreshToken();
