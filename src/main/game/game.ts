@@ -12,6 +12,7 @@ import { engineContentAPI } from "@main/content/engine/engine-content";
 import { applyDefaultSpringsettings } from "@main/game/springsettings";
 import { startScriptConverter } from "@main/utils/start-script-converter";
 import { logger } from "@main/utils/logger";
+import { collectCompleteLines } from "@main/utils/line-collector";
 import { gameContentAPI } from "@main/content/game/game-content";
 import { WRITE_DATA_PATH, REPLAYS_PATH, getEnginePath, getAssetsPath } from "@main/config/app";
 import { BattleWithMetadata } from "@main/game/battle/battle-types";
@@ -109,28 +110,30 @@ export class GameAPI {
                 });
                 if (!this.gameProcess.stdout || !this.gameProcess.stderr) throw new Error("failed to access game process stream");
                 let isGameRunning = false;
-                this.gameProcess.stdout.on("data", (data) => {
-                    engineLogger.info(`${data}`);
+
+                const stdout = collectCompleteLines((lines) => {
+                    engineLogger.info(lines);
                     // Check if the game has started
                     // This is a heuristic based on the log output, as the engine does not provide a specific event for game launch
                     //TODO replace this with some ipc event from the engine when it is available
-                    if (!isGameRunning && data.toString().includes("[Game::Load]")) {
+                    if (!isGameRunning && lines.includes("[Game::Load]")) {
                         isGameRunning = true;
                         this.onGameLaunched.dispatch();
                         resolve();
                     }
                     //TODO this is a workaround for the fact that the engine does not exit right away when the game is closed (can take a few seconds on Linux)
                     // See https://github.com/beyond-all-reason/RecoilEngine/issues/2450
-                    if (isGameRunning && data.toString().includes("[SpringApp::Kill][8]")) {
+                    if (isGameRunning && lines.includes("[SpringApp::Kill][8]")) {
                         log.info("Game process requested to close");
                         this.gameProcess = null;
                         isGameRunning = false;
                         this.onGameClosed.dispatch(null);
                     }
                 });
-                this.gameProcess.stderr.on("data", (data) => {
-                    engineLogger.error(`${data}`);
-                });
+                const stderr = collectCompleteLines((lines) => engineLogger.error(lines));
+
+                this.gameProcess.stdout.on("data", stdout.write);
+                this.gameProcess.stderr.on("data", stderr.write);
                 this.gameProcess.addListener("error", (err) => {
                     log.error(err);
                 });
@@ -147,6 +150,8 @@ export class GameAPI {
                     log.debug(`Game process spawned successfully`);
                 });
                 this.gameProcess.addListener("close", (exitCode) => {
+                    stdout.flush();
+                    stderr.flush();
                     log.debug(`Game process closed with exit code: ${exitCode}`);
                 });
                 log.debug(`Game process PID: ${this.gameProcess.pid}`);
