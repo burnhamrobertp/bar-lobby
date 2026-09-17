@@ -4516,8 +4516,7 @@
                     "chatParty": null,
                     "chatDirect": null,
                     "noChatAvailable": null,
-                    "attachEvidence": null,
-                    "evidenceNotSentYet": null
+                    "attachEvidence": null
                 }
             }
         }
