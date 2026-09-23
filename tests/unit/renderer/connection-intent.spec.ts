@@ -49,7 +49,7 @@ const { me } = await import("@renderer/store/me.store");
 const simulateConnect = () => connectHandlers.forEach((handler) => handler());
 const simulateClose = () => disconnectHandlers.forEach((handler) => handler());
 const simulateSessionEnd = () => authHandlers.forEach((handler) => handler({ authenticated: false }));
-const simulateBattleEnded = () => battleEndedHandlers.forEach((handler) => handler({ battleId: "battle-1", players: [], spectators: [], winningAllyTeamIds: [] } satisfies BattleEndedEventData));
+const simulateBattleEnded = () => battleEndedHandlers.forEach((handler) => handler({ matchId: "48213", players: [], bots: [], spectators: [], winningAllyTeamIds: [] } satisfies BattleEndedEventData));
 
 describe("connection intent", () => {
     beforeAll(async () => {
@@ -130,7 +130,7 @@ describe("connection intent", () => {
             engine: { version: "engine-version" },
             game: { springName: "game-version" },
             map: { springName: "map-version" },
-            battleId: "battle-1",
+            matchId: "48213",
         } satisfies BattleStartRequestData;
 
         battleStartHandlers.forEach((handler) => handler(battle));
@@ -153,7 +153,7 @@ describe("connection intent", () => {
             engine: { version: "engine-version" },
             game: { springName: "game-version" },
             map: { springName: "map-version" },
-            battleId: "battle-1",
+            matchId: "48213",
         } satisfies PrivateBattle;
 
         const data = { user: { currentBattle: battle } as PrivateUser } satisfies UserSelfEventData;
@@ -180,7 +180,7 @@ describe("connection intent", () => {
             password: "secret",
             engine: { version: "engine-version" },
             game: { springName: "game-version" },
-            battleId: "battle-1",
+            matchId: "48213",
         };
 
         simulateBattleEnded();

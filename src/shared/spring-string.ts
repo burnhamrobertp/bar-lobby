@@ -7,7 +7,7 @@ export interface SpringConnectionDetails {
     port: number;
     username: string;
     password: string;
-    battleId: string;
+    matchId: string;
 }
 
 // TODO: Remove the backward compatibility for the `ip` field once the server is updated to Tachyon 1.24.0

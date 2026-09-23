@@ -50,7 +50,7 @@ describe("battle rejoin state", () => {
             port: 8452,
             engine: { version: "engine-version" },
             game: { springName: "game-version" },
-            battleId: "battle-1",
+            matchId: "48213",
         } satisfies NonNullable<typeof tachyonStore.springConnectionDetails>;
         tachyonStore.rejoinModalOpen = true;
 
